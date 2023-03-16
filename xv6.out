@@ -1,12 +1,10 @@
 
 xv6 kernel is booting
 
-hart 1 starting
 hart 2 starting
+hart 1 starting
 init: starting sh
-$ sh < xargstest.sh
-$ echo DONE
-$ $ $ $ $ hello
-hello
-hello
-$ $ DONE
+$ sysinfotest
+sysinfotest: start
+sysinfotest: OK
+$ qemu-system-riscv64: terminating on signal 15 from pid 19988 (<unknown process>)
