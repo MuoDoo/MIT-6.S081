@@ -1,12 +1,11 @@
 #include "types.h"
 #include "riscv.h"
+#include "param.h"
 #include "defs.h"
 #include "date.h"
-#include "param.h"
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-#include "sysinfo.h"
 
 uint64
 sys_exit(void)
@@ -47,6 +46,7 @@ sys_sbrk(void)
 
   if(argint(0, &n) < 0)
     return -1;
+  
   addr = myproc()->sz;
   if(growproc(n) < 0)
     return -1;
@@ -58,6 +58,7 @@ sys_sleep(void)
 {
   int n;
   uint ticks0;
+
 
   if(argint(0, &n) < 0)
     return -1;
@@ -73,6 +74,26 @@ sys_sleep(void)
   release(&tickslock);
   return 0;
 }
+
+
+#ifdef LAB_PGTBL
+extern int pageaccess(uint64 ,int,uint64);
+
+
+uint64
+sys_pgaccess(void)
+{
+  // lab pgtbl: your code here.
+  uint64 base,msk;
+  int len;
+  if(argaddr(0,&base) < 0 || argint(1,&len) < 0 || argaddr(2,&msk) < 0) {
+    return -1;
+  }
+  if(len > 32) return -1;
+  return pageaccess(base,len,msk);
+  return 0;
+}
+#endif
 
 uint64
 sys_kill(void)
@@ -95,32 +116,4 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
-}
-
-uint64
-sys_trace(void) 
-{
-  int mask;
-  if(argint(0,&mask) < 0) return -1;
-  myproc()->syscall_trace = mask;
-  
-  return 0;
-}
-
-
-extern uint64 kfreemem(void);
-extern uint64 getprocnum(void);
-
-
-uint64
-sys_sysinfo(void)
-{
-  struct sysinfo info;
-  uint64 infoaddr;
-  if(argaddr(0,&infoaddr) < 0) 
-    return -1;
-  info.freemem = kfreemem();
-  info.nproc = getprocnum();
-  if(copyout(myproc()->pagetable,infoaddr,(void*)&info,sizeof info) < 0) return -1;
-  return 0;
 }

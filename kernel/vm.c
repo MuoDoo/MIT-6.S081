@@ -5,7 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
-
+#include "spinlock.h"
+#include "proc.h"
 /*
  * the kernel's page table.
  */
@@ -431,4 +432,47 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+void
+pgtbprint(pagetable_t p,int depth) {
+  for(int i=0;i<512;++i) {
+    pte_t pte = p[i];
+    if(pte & PTE_V) {
+      printf("..");
+      for(int j = 0;j<depth;++j) {
+        printf(" ..");
+      }
+      printf("%d: pte %p pa %p\n",i,pte,PTE2PA(pte));
+      if((pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+        uint64 child = PTE2PA(pte);
+        pgtbprint((pagetable_t)child,depth+1);
+      }
+    }
+  }
+}
+
+void
+vmprint(pagetable_t p) {
+  printf("page table %p\n", p);
+  pgtbprint(p,0);
+}
+
+
+
+int
+pageaccess(uint64 base,int len,uint64 maskaddr) {
+  printf("%p %p %p\n",base,len,maskaddr);
+  struct proc *p = myproc();
+  uint mask = 0;
+  for(int i = 0;i<len;++i) {
+    uint64 target = base + i*PGSIZE;
+    pte_t *pte ;
+    pte = walk(p->pagetable,target,0);
+    if(pte == 0  || ((*pte) & PTE_A) == 0) continue; 
+    mask |= 1u<<i;
+    *pte &= ~PTE_A;
+  }
+  if(copyout(p->pagetable,maskaddr,(void*)&mask,sizeof mask) < 0) return -1;
+  return 0;
 }
